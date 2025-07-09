@@ -1,0 +1,128 @@
+profiles:
+  default:
+    ellipse:
+      center_x: 150
+      center_y: 100
+      color: '#4CAF50'
+      line_width: 3
+      radius_x: 150
+      radius_y: 50
+    particles:
+      velocity: 10.0
+      lifetime: 1000
+    spawner:
+      x: 150
+      y: 100
+      spawn_count: 3
+      spawn_interval: 5
+    catching:
+      probability: 0.05
+      radius: 3.0
+      exposure: 0.2
+    step_function:
+      decay_rate: 0.02
+      saturation_threshold: 0.95
+      step_interval: 100
+    system:
+      count_particles: true
+      mask_resolution: 100
+      grid_padding: 0
+      view_padding: 30
+    dividers:
+      - name: "Brain Border"        # Name of the divider
+        x: 150                      # X position of divider
+        probability: 0.1            # Catch probability for right side
+        color: '#FF5722'            # Color for right side (orange-red)
+    ui_ranges:
+      velocity_slider:
+        min: 1
+        max: 50
+      catch_prob_slider:
+        min: 1
+        max: 100
+      catch_radius_slider:
+        min: 1
+        max: 20
+      catch_exposure_slider:
+        min: 1
+        max: 100
+      decay_slider:
+        min: 0
+        max: 100
+      interval_slider:
+        min: 50
+        max: 2000
+      spawn_count_slider:
+        min: 1
+        max: 10
+      spawn_interval_slider:
+        min: 1
+        max: 20
+  fast_simulation:
+    particles:
+      velocity: 25.0
+    step_function:
+      step_interval: 50
+      decay_rate: 0.05
+    catching:
+      probability: 0.1
+  slow_gentle:
+    particles:
+      velocity: 5.0
+    step_function:
+      step_interval: 200
+      decay_rate: 0.01
+    catching:
+      probability: 0.02
+      exposure: 0.1
+  high_catch_rate:
+    catching:
+      probability: 0.2
+      radius: 5.0
+      exposure: 0.3
+  test:
+    catching:
+      probability: 0.08
+      radius: 2.0
+      exposure: 0.43
+    step_function:
+      decay_rate: 0.0
+      step_interval: 50
+  brain1:
+    particles:
+      velocity: 20.0
+    spawner:
+      x: 298.7360149037855
+      y: 100.69260076788727
+      spawn_count: 10
+      spawn_interval: 1
+    catching:
+      probability: 0.06
+      radius: 1.0
+      exposure: 0.78
+    step_function:
+      decay_rate: 0.009
+      step_interval: 50
+  test2:
+    spawner:
+      x: 194.11673307376185
+      y: 104.9170352651871
+      spawn_count: 10
+      spawn_interval: 1
+    catching:
+      radius: 1.0
+      exposure: 0.71
+current_profile: brain1
+mask_info:
+  ellipse_used:
+    center_x: 150
+    center_y: 100
+    radius_x: 150
+    radius_y: 50
+  mask_resolution: 100
+  x_range:
+  - 0
+  - 300
+  y_range:
+  - 50
+  - 150
