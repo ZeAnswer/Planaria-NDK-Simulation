@@ -29,10 +29,10 @@ profiles:
       grid_padding: 0
       view_padding: 30
     dividers:
-      - name: "Brain Border"        # Name of the divider
-        x: 150                      # X position of divider
-        probability: 0.1            # Catch probability for right side
-        color: '#FF5722'            # Color for right side (orange-red)
+    - name: Brain Border
+      x: 150
+      probability: 0.1
+      color: '#FF5722'
     ui_ranges:
       velocity_slider:
         min: 1
@@ -59,13 +59,68 @@ profiles:
         min: 1
         max: 20
   fast_simulation:
+    ellipse:
+      center_x: 150
+      center_y: 100
+      color: '#4CAF50'
+      line_width: 3
+      radius_x: 150
+      radius_y: 50
     particles:
-      velocity: 25.0
-    step_function:
-      step_interval: 50
-      decay_rate: 0.05
+      velocity: 200.0
+      lifetime: 1000
+    spawner:
+      x: 298.7360149037855
+      y: 100.69260076788727
+      spawn_count: 50
+      spawn_interval: 1
     catching:
-      probability: 0.1
+      probability: 0.059
+      radius: 1.8359999999999999
+      exposure: 0.441
+    step_function:
+      decay_rate: 0.0068000000000000005
+      saturation_threshold: 0.95
+      step_interval: 1
+    system:
+      count_particles: true
+      mask_resolution: 100
+      grid_padding: 0
+      view_padding: 30
+    dividers:
+    - name: '1'
+      x: 0.0
+      probability: 0.045
+      color: '#FF5722'
+    - name: '2'
+      x: 150.0
+      probability: 0.341
+      color: '#FF5722'
+    ui_ranges:
+      velocity_slider:
+        min: 1
+        max: 50
+      catch_prob_slider:
+        min: 1
+        max: 100
+      catch_radius_slider:
+        min: 1
+        max: 20
+      catch_exposure_slider:
+        min: 1
+        max: 100
+      decay_slider:
+        min: 0
+        max: 100
+      interval_slider:
+        min: 50
+        max: 2000
+      spawn_count_slider:
+        min: 1
+        max: 10
+      spawn_interval_slider:
+        min: 1
+        max: 20
   slow_gentle:
     particles:
       velocity: 5.0
@@ -89,20 +144,64 @@ profiles:
       decay_rate: 0.0
       step_interval: 50
   brain1:
+    ellipse:
+      center_x: 150
+      center_y: 100
+      color: '#4CAF50'
+      line_width: 3
+      radius_x: 150
+      radius_y: 50
     particles:
-      velocity: 20.0
+      velocity: 74.232
+      lifetime: 1000
     spawner:
       x: 298.7360149037855
       y: 100.69260076788727
-      spawn_count: 10
+      spawn_count: 50
       spawn_interval: 1
     catching:
-      probability: 0.06
-      radius: 1.0
-      exposure: 0.78
+      probability: 0.147
+      radius: 1.285
+      exposure: 0.544
     step_function:
-      decay_rate: 0.009
+      decay_rate: 0.06820000000000001
+      saturation_threshold: 0.95
       step_interval: 50
+    system:
+      count_particles: true
+      mask_resolution: 100
+      grid_padding: 0
+      view_padding: 30
+    dividers:
+    - name: '1'
+      x: 150
+      probability: 0.045
+      color: '#FF5722'
+    ui_ranges:
+      velocity_slider:
+        min: 1
+        max: 50
+      catch_prob_slider:
+        min: 1
+        max: 100
+      catch_radius_slider:
+        min: 1
+        max: 20
+      catch_exposure_slider:
+        min: 1
+        max: 100
+      decay_slider:
+        min: 0
+        max: 100
+      interval_slider:
+        min: 50
+        max: 2000
+      spawn_count_slider:
+        min: 1
+        max: 10
+      spawn_interval_slider:
+        min: 1
+        max: 20
   test2:
     spawner:
       x: 194.11673307376185
@@ -112,7 +211,7 @@ profiles:
     catching:
       radius: 1.0
       exposure: 0.71
-current_profile: brain1
+current_profile: fast_simulation
 mask_info:
   ellipse_used:
     center_x: 150

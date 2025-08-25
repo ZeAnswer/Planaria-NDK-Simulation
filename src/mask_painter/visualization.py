@@ -124,7 +124,7 @@ class VisualizationManager:
         self.mask_image_item = pg.ImageItem()
         
         # Set the data and position
-        self.mask_image_item.setImage(mask_data, levels=(0, 1))
+        self.mask_image_item.setImage(mask_data.T, levels=(0, 1))
         self.mask_image_item.setColorMap(self.colormap)
         
         # Set position and scale
@@ -226,7 +226,7 @@ class VisualizationManager:
             grid_bounds: Grid bounds
         """
         if self.mask_image_item and mask_data.size > 0:
-            self.mask_image_item.setImage(mask_data, levels=(0, 1))
+            self.mask_image_item.setImage(mask_data.T, levels=(0, 1))
         else:
             self.create_mask_visualization(mask_data, grid_bounds)
     

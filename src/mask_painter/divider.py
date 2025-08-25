@@ -3,7 +3,6 @@ Divider system for the mask painter application.
 Handles vertical dividers that segment the planaria and affect particle catching.
 """
 
-import copy
 from typing import List, Dict, Any, Optional, Tuple
 
 
@@ -25,23 +24,11 @@ class Divider:
         self.x = x
         self.probability = probability
         self.color = color
-        
-    def is_point_on_right(self, point_x: float) -> bool:
-        """
-        Check if a point is on the right side of this divider.
-        
-        Args:
-            point_x: X coordinate to check
-            
-        Returns:
-            True if point is to the right of this divider
-        """
-        return point_x > self.x
     
     def is_point_in_region(self, point_x: float) -> bool:
         """
-        Check if a point is in this divider's region.
-        Alias for is_point_on_right for clarity.
+        Check if a point is in this divider's region;
+        Meaning if a point is to the right of the divider
         
         Args:
             point_x: X coordinate to check
@@ -49,7 +36,7 @@ class Divider:
         Returns:
             True if point is in this divider's affected region
         """
-        return self.is_point_on_right(point_x)
+        return point_x > self.x
     
     def get_catch_probability(self) -> float:
         """Get the catch probability for this divider's region"""
@@ -230,7 +217,7 @@ class DividerManager:
             Catch probability for the region containing this point
         """
         # Find the rightmost divider that affects this position
-        applicable_dividers = [d for d in self.dividers if d.is_point_on_right(x)]
+        applicable_dividers = [d for d in self.dividers if d.is_point_in_region(x)]
         
         if not applicable_dividers:
             return 0.0  # No dividers affect this region

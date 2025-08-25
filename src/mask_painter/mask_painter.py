@@ -4,7 +4,6 @@ Refactored version with modular components.
 """
 
 import sys
-import os
 import numpy as np
 from PyQt5 import QtWidgets, QtCore
 import pyqtgraph as pg
@@ -17,7 +16,7 @@ from divider import DividerManager
 from mask_system import MaskSystem
 from visualization import VisualizationManager
 from ui_components import (
-    ParameterSlider, ColorButton, DividerControlPanel, 
+    ParameterSlider, DividerControlPanel, 
     SpawnerControlPanel, StepControlPanel
 )
 
@@ -44,49 +43,75 @@ class MaskPainter(QtWidgets.QMainWindow):
         self.step_timer = QtCore.QTimer()
         self.step_timer.timeout.connect(self.perform_step)
         
-        # Load configuration and initialize systems
-        self.load_current_profile()
+        # Step 1: Perform a temporary load of the default config.
+        # This is necessary so that the UI can be built without errors.
+        # The real profile will be loaded at the end of this method.
+        self.current_config = self.config_manager.merge_profile_config('default')
         
-        # Setup UI
+        # Step 2: Build the entire application UI and connect signals.
         self.setup_ui()
         self.setup_graphics()
         self.connect_signals()
         
-        # Initial visualization update
-        self.update_all_visualizations()
-    
+        # Step 3: Now that the app is fully built, load the selected profile.
+        # This reuses the exact same logic as the "Load Profile" button,
+        # ensuring a consistent and correct startup state.
+        self.load_selected_profile()
+
+    def _apply_profile(self, profile_name: str):
+        """
+        Loads and applies all settings from a given profile name without
+        user interaction. This is the core logic for loading a profile.
+        """
+        try:
+            new_config = self.config_manager.merge_profile_config(profile_name)
+            self.current_config = new_config
+            
+            # Update all systems with the new configuration
+            self.particle_manager = ParticleManager(new_config)
+            self.spawner = ParticleSpawner(
+                spawn_count=new_config.get('spawner', {}).get('spawn_count', 3),
+                spawn_interval=new_config.get('spawner', {}).get('spawn_interval', 5)
+            )
+            ellipse_config = new_config.get('ellipse', {})
+            ellipse_bounds = (
+                ellipse_config.get('center_x', 150),
+                ellipse_config.get('center_y', 100),
+                ellipse_config.get('radius_x', 150),
+                ellipse_config.get('radius_y', 50)
+            )
+            self.divider_manager = DividerManager(new_config, ellipse_bounds)
+            self.mask_system = MaskSystem(new_config)
+            
+            # Update the spawner's position based on the new ellipse geometry.
+            self.spawner.update_position(
+                ellipse_bounds[0], # center_x
+                ellipse_bounds[2], # radius_x
+                ellipse_bounds[1]  # center_y
+            )
+
+            # If visualization manager exists, update it. Otherwise, it will be created later.
+            if self.visualization_manager:
+                self.visualization_manager.update_config(new_config)
+
+            # Set as the current profile in the config file
+            self.config_manager.set_current_profile(profile_name)
+
+        except Exception as e:
+            print(f"Error applying profile '{profile_name}': {e}")
+            # Fallback to default if loading fails
+            if profile_name != 'default':
+                self._apply_profile('default')
+
     def load_current_profile(self):
-        """Load the current profile and initialize all systems"""
-        current_profile = self.config_manager.get_current_profile_name()
-        config = self.config_manager.merge_profile_config(current_profile)
-        
-        # Initialize all managers with the configuration
-        self.particle_manager = ParticleManager(config)
-        
-        # Initialize spawner
-        spawner_config = config.get('spawner', {})
-        self.spawner = ParticleSpawner(
-            x=spawner_config.get('x', 150),
-            y=spawner_config.get('y', 100),
-            spawn_count=spawner_config.get('spawn_count', 3),
-            spawn_interval=spawner_config.get('spawn_interval', 5)
-        )
-        
-        # Initialize divider manager
-        ellipse_config = config.get('ellipse', {})
-        ellipse_bounds = (
-            ellipse_config.get('center_x', 150),
-            ellipse_config.get('center_y', 100),
-            ellipse_config.get('radius_x', 150),
-            ellipse_config.get('radius_y', 50)
-        )
-        self.divider_manager = DividerManager(config, ellipse_bounds)
-        
-        # Initialize mask system
-        self.mask_system = MaskSystem(config)
-        
-        self.current_config = config
-    
+        """
+        This method is now a placeholder. The core logic has been moved to
+        _apply_profile to be reusable.
+        DEPRECATED: This method will be removed in a future refactor.
+        """
+        profile_name = self.config_manager.get_current_profile_name()
+        self._apply_profile(profile_name)
+
     def setup_ui(self):
         """Setup the user interface"""
         self.setWindowTitle("Planaria Particle Simulator")
@@ -159,7 +184,7 @@ class MaskPainter(QtWidgets.QMainWindow):
         particle_group = QtWidgets.QGroupBox("Particle Parameters")
         particle_layout = QtWidgets.QVBoxLayout(particle_group)
         
-        self.velocity_slider = ParameterSlider("Velocity:", 1, 50, 10, decimals=1)
+        self.velocity_slider = ParameterSlider("Velocity:", 1, 200, 10, decimals=1)
         particle_layout.addWidget(self.velocity_slider)
         
         self.catch_prob_slider = ParameterSlider("Catch Probability:", 0, 1, 0.05, decimals=3)
@@ -192,6 +217,10 @@ class MaskPainter(QtWidgets.QMainWindow):
         layout.addWidget(divider_group)
         
         layout.addStretch()
+
+        # Add a status label at the bottom
+        self.status_label = QtWidgets.QLabel("Ready")
+        layout.addWidget(self.status_label)
     
     def setup_graphics(self):
         """Setup the graphics visualization"""
@@ -226,9 +255,19 @@ class MaskPainter(QtWidgets.QMainWindow):
         
         # Divider controls
         self.divider_controls.dividerChanged.connect(self.update_divider_parameters)
+        self.divider_controls.dividerSelected.connect(self.on_divider_selected)
         
         # Load initial values into UI
         self.load_ui_values_from_config()
+
+    def on_divider_selected(self, divider_name: str):
+        """
+        Handles the event when a divider is selected in the UI.
+        This ensures the UI controls display the properties of the selected divider.
+        """
+        self.status_label.setText(f"Selected Divider: {divider_name}")
+        # The DividerControlPanel itself handles updating its sliders.
+        # We just need to know the selection has changed.
     
     def load_ui_values_from_config(self):
         """Load current configuration values into UI controls"""
@@ -267,27 +306,14 @@ class MaskPainter(QtWidgets.QMainWindow):
         center_x = ellipse_config.get('center_x', 150)
         radius_x = ellipse_config.get('radius_x', 150)
         self.divider_controls.set_position_range(center_x - radius_x, center_x + radius_x)
-    
+
+        # Manually trigger UI update for dividers to handle the single-item case
+        self.divider_controls.update_ui()
+
     def mouse_clicked(self, event):
-        """Handle mouse clicks for spawner placement"""
+        """Handle mouse clicks. Spawner placement is now disabled."""
         if event.button() == QtCore.Qt.LeftButton:
-            # Convert click position to data coordinates
-            scene_pos = event.scenePos()
-            view_pos = self.plot_widget.plotItem.vb.mapSceneToView(scene_pos)
-            
-            x, y = view_pos.x(), view_pos.y()
-            
-            # Check if click is inside ellipse
-            if self.mask_system.is_inside_ellipse(x, y):
-                # Move spawner to clicked position
-                self.spawner.set_position(x, y)
-                
-                # Update spawner configuration
-                self.current_config['spawner']['x'] = x
-                self.current_config['spawner']['y'] = y
-                
-                # Update visualization
-                self.visualization_manager.update_spawner_display((x, y))
+            self.status_label.setText("Spawner is fixed at the head of the planaria.")
     
     def perform_step(self):
         """Perform one simulation step"""
@@ -451,52 +477,27 @@ class MaskPainter(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.information(
                 self, "Success", f"Profile '{profile_name}' saved successfully."
             )
+            # Refresh the profile list in the UI
+            self.profile_combo.addItems(self.config_manager.get_available_profiles())
+            self.profile_combo.setCurrentText(profile_name)
         else:
             QtWidgets.QMessageBox.warning(
                 self, "Error", f"Failed to save profile '{profile_name}'."
             )
     
     def load_selected_profile(self):
-        """Load the selected profile"""
+        """Load the selected profile from the dropdown."""
         profile_name = self.profile_combo.currentText()
-        
-        try:
-            # Load new configuration
-            new_config = self.config_manager.merge_profile_config(profile_name)
-            self.current_config = new_config
-            
-            # Update all systems
-            self.particle_manager.update_config(new_config)
-            self.spawner.update_from_config(new_config)
-            
-            ellipse_config = new_config.get('ellipse', {})
-            ellipse_bounds = (
-                ellipse_config.get('center_x', 150),
-                ellipse_config.get('center_y', 100),
-                ellipse_config.get('radius_x', 150),
-                ellipse_config.get('radius_y', 50)
-            )
-            self.divider_manager = DividerManager(new_config, ellipse_bounds)
-            self.mask_system.update_config(new_config)
-            self.visualization_manager.update_config(new_config)
-            
-            # Update UI values
-            self.load_ui_values_from_config()
-            
-            # Clear simulation and update visualizations
-            self.clear_simulation()
-            
-            # Set as current profile
-            self.config_manager.set_current_profile(profile_name)
-            
-            QtWidgets.QMessageBox.information(
-                self, "Success", f"Profile '{profile_name}' loaded successfully."
-            )
-            
-        except Exception as e:
-            QtWidgets.QMessageBox.warning(
-                self, "Error", f"Failed to load profile '{profile_name}': {str(e)}"
-            )
+        if not profile_name:
+            self.status_label.setText("No profile selected to load.")
+            return
+
+        self._apply_profile(profile_name)
+        # Update UI values from the newly loaded config
+        self.load_ui_values_from_config()
+        # Clear simulation state
+        self.clear_simulation()
+        self.status_label.setText(f"Profile '{profile_name}' loaded successfully.")
     
     def update_particle_visualization(self):
         """Update particle visualization"""

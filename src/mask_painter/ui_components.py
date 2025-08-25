@@ -4,7 +4,7 @@ Provides custom widgets for parameter control and divider management.
 """
 
 from PyQt5 import QtWidgets, QtCore, QtGui
-from typing import Dict, Any, List, Callable, Optional
+from typing import Dict, Any, List, Optional
 
 
 class ParameterSlider(QtWidgets.QWidget):
@@ -210,13 +210,12 @@ class DividerControlPanel(QtWidgets.QWidget):
         layout.addLayout(color_layout)
         
         # Enable/disable controls initially
-        self.update_controls_state()
+        self.update_ui()
     
     def set_dividers(self, dividers: List[Dict[str, Any]]):
         """Update the divider list"""
         self.dividers = dividers
-        self.update_divider_combo()
-        self.update_controls_state()
+        self.update_ui()
     
     def update_divider_combo(self):
         """Update the divider combo box"""
@@ -235,7 +234,11 @@ class DividerControlPanel(QtWidgets.QWidget):
                 self.current_divider_name = None
         
         self.divider_combo.blockSignals(False)
-    
+
+        # If there's only one item, manually trigger the selection logic
+        if self.divider_combo.count() == 1:
+            self.on_divider_selected(self.divider_combo.itemText(0))
+
     def update_controls_state(self):
         """Enable/disable controls based on selection"""
         has_dividers = len(self.dividers) > 0
@@ -249,6 +252,11 @@ class DividerControlPanel(QtWidgets.QWidget):
         
         if has_selection:
             self.update_property_controls()
+
+    def update_ui(self):
+        """A single method to refresh the entire UI state."""
+        self.update_divider_combo()
+        self.update_controls_state()
     
     def update_property_controls(self):
         """Update property controls with current divider values"""
@@ -319,18 +327,14 @@ class DividerControlPanel(QtWidgets.QWidget):
             # Create new divider
             new_divider = {
                 'name': name,
-                'x': 150,  # Default position
+                'x': self.position_slider.get_value(),  # Start at current position
                 'probability': 0.1,
                 'color': '#FF5722'
             }
             
             self.dividers.append(new_divider)
-            self.update_divider_combo()
-            
-            # Select the new divider
-            self.divider_combo.setCurrentText(name)
             self.current_divider_name = name
-            self.update_controls_state()
+            self.update_ui()
             
             self.dividerChanged.emit()
     
@@ -350,8 +354,7 @@ class DividerControlPanel(QtWidgets.QWidget):
             self.dividers = [d for d in self.dividers if d['name'] != self.current_divider_name]
             self.current_divider_name = None
             
-            self.update_divider_combo()
-            self.update_controls_state()
+            self.update_ui()
             
             self.dividerChanged.emit()
     
@@ -374,7 +377,7 @@ class SpawnerControlPanel(QtWidgets.QWidget):
         """Setup the UI components"""
         layout = QtWidgets.QVBoxLayout(self)
         
-        self.count_slider = ParameterSlider("Spawn Count:", 1, 10, 3, decimals=0)
+        self.count_slider = ParameterSlider("Spawn Count:", 1, 200, 3, decimals=0)
         self.count_slider.valueChanged.connect(self.spawnerChanged.emit)
         layout.addWidget(self.count_slider)
         
@@ -422,7 +425,7 @@ class StepControlPanel(QtWidgets.QWidget):
         self.decay_slider.valueChanged.connect(self.parameterChanged.emit)
         layout.addWidget(self.decay_slider)
         
-        self.interval_slider = ParameterSlider("Step Interval:", 50, 2000, 100, decimals=0)
+        self.interval_slider = ParameterSlider("Step Interval:", 1, 200, 100, decimals=0)
         self.interval_slider.valueChanged.connect(self.parameterChanged.emit)
         layout.addWidget(self.interval_slider)
     

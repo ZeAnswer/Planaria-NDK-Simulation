@@ -1,16 +1,18 @@
 """
 Configuration management for the mask painter application.
-Handles loading, saving, and managing configuration profiles.
+
+This module defines the `ConfigManager` class, which is responsible for
+loading, saving, and managing configuration profiles from a YAML file.
 """
 
 import os
 import yaml
 import copy
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 
 
 class ConfigManager:
-    """Manages configuration loading, saving, and profile management"""
+    """Manages configuration loading and saving"""
     
     def __init__(self, config_path: str = "config.yaml"):
         """

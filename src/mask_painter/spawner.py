@@ -9,37 +9,29 @@ from typing import Dict, Any, Optional, Tuple
 class ParticleSpawner:
     """Manages spawning particles at regular intervals from a specific location"""
     
-    def __init__(self, x: float = 0, y: float = 0, spawn_count: int = 1, 
-                 spawn_interval: int = 5):
+    def __init__(self, spawn_count: int = 1, spawn_interval: int = 5):
         """
         Initialize the particle spawner.
         
         Args:
-            x: X position of spawner
-            y: Y position of spawner
-            spawn_count: Number of particles to spawn each time
-            spawn_interval: Steps between spawning events
+            spawn_count: Number of particles to spawn at each interval
+            spawn_interval: Number of steps between spawns
         """
-        self.x = x
-        self.y = y
-        self.spawn_count = spawn_count
-        self.spawn_interval = spawn_interval
+        self.x = 0  # Initial position, will be updated
+        self.y = 0  # Initial position, will be updated
+        self.spawn_count = max(1, spawn_count)
+        self.spawn_interval = max(1, spawn_interval)
         self.step_counter = 0
-        self.is_active = True
         
-    def set_position(self, x: float, y: float) -> None:
+    def update_position(self, ellipse_center_x: float, ellipse_radius_x: float, ellipse_center_y: float) -> None:
         """
-        Set the spawner position.
-        
-        Args:
-            x: New X position
-            y: New Y position
+        Updates the spawner's position to be at the rightmost tip of the ellipse.
         """
-        self.x = x
-        self.y = y
+        self.x = ellipse_center_x + ellipse_radius_x
+        self.y = ellipse_center_y
     
     def get_position(self) -> Tuple[float, float]:
-        """Get spawner position as tuple"""
+        """Get the spawner's current position"""
         return (self.x, self.y)
     
     def set_spawn_count(self, count: int) -> None:
@@ -78,9 +70,6 @@ class ParticleSpawner:
         Returns:
             True if particles should be spawned this step
         """
-        if not self.is_active:
-            return False
-        
         if current_step is not None:
             return current_step % self.spawn_interval == 0
         else:
@@ -91,63 +80,6 @@ class ParticleSpawner:
         """Reset the internal step counter"""
         self.step_counter = 0
     
-    def set_active(self, active: bool) -> None:
-        """
-        Enable or disable the spawner.
-        
-        Args:
-            active: True to enable, False to disable
-        """
-        self.is_active = active
-    
-    def is_spawner_active(self) -> bool:
-        """Check if spawner is currently active"""
-        return self.is_active
-    
-    def update_from_config(self, config: Dict[str, Any]) -> None:
-        """
-        Update spawner parameters from configuration.
-        
-        Args:
-            config: Configuration dictionary containing spawner parameters
-        """
-        spawner_config = config.get('spawner', {})
-        
-        if 'x' in spawner_config:
-            self.x = spawner_config['x']
-        if 'y' in spawner_config:
-            self.y = spawner_config['y']
-        if 'spawn_count' in spawner_config:
-            self.set_spawn_count(spawner_config['spawn_count'])
-        if 'spawn_interval' in spawner_config:
-            self.set_spawn_interval(spawner_config['spawn_interval'])
-    
-    def get_config_dict(self) -> Dict[str, Any]:
-        """
-        Get spawner configuration as dictionary.
-        
-        Returns:
-            Dictionary with spawner configuration
-        """
-        return {
-            'x': self.x,
-            'y': self.y,
-            'spawn_count': self.spawn_count,
-            'spawn_interval': self.spawn_interval
-        }
-    
-    def get_next_spawn_steps(self) -> int:
-        """
-        Get number of steps until next spawn.
-        
-        Returns:
-            Steps remaining until next spawn
-        """
-        if not self.is_active:
-            return -1  # Inactive
-        
-        return self.spawn_interval - (self.step_counter % self.spawn_interval)
-    
     def force_spawn(self) -> bool:
         """
         Force immediate spawning (resets counter).
@@ -155,9 +87,6 @@ class ParticleSpawner:
         Returns:
             True (spawning should occur)
         """
-        if not self.is_active:
-            return False
-        
         self.step_counter = 0
         return True
     
@@ -172,7 +101,27 @@ class ParticleSpawner:
             'position': (self.x, self.y),
             'spawn_count': self.spawn_count,
             'spawn_interval': self.spawn_interval,
-            'is_active': self.is_active,
             'step_counter': self.step_counter,
-            'next_spawn_in': self.get_next_spawn_steps()
+            'next_spawn_in': self.spawn_interval - (self.step_counter % self.spawn_interval)
         }
+    
+    def update_from_config(self, config: Dict[str, Any]) -> None:
+        """
+        Update spawner parameters from configuration.
+        
+        Args:
+            config: Configuration dictionary containing spawner parameters
+        """
+        spawner_config = config.get('spawner', {})
+        
+        self.set_spawn_count(spawner_config.get('spawn_count', self.spawn_count))
+        self.set_spawn_interval(spawner_config.get('spawn_interval', self.spawn_interval))
+        
+        # If ellipse info is available, update position
+        ellipse_config = config.get('ellipse', {})
+        center_x = ellipse_config.get('center_x')
+        radius_x = ellipse_config.get('radius_x')
+        center_y = ellipse_config.get('center_y')
+        
+        if all(v is not None for v in [center_x, radius_x, center_y]):
+            self.update_position(center_x, radius_x, center_y)

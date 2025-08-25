@@ -10,7 +10,7 @@ from typing import List, Tuple, Dict, Any
 class Particle:
     """A single particle that moves and paints"""
     
-    def __init__(self, x: float, y: float, velocity: float, angle: float = None):
+    def __init__(self, x: float, y: float, velocity: float, angle: float = None, movement_mode: str = "diffusion"):
         """
         Initialize a particle.
         
@@ -19,10 +19,12 @@ class Particle:
             y: Initial y position
             velocity: Movement velocity
             angle: Initial movement angle (random if None)
+            movement_mode: Movement mode ("straight" or "diffusion")
         """
         self.x = x
         self.y = y
         self.velocity = velocity
+        self.movement_mode = movement_mode  # "straight" or "diffusion"
         
         # Random initial direction if not specified
         if angle is None:
@@ -30,7 +32,7 @@ class Particle:
         else:
             self.angle = angle
             
-        # Velocity components
+        # Velocity components for straight-line movement
         self.vx = velocity * np.cos(self.angle)
         self.vy = velocity * np.sin(self.angle)
         
@@ -38,45 +40,61 @@ class Particle:
         
     def move(self, dt: float = 1.0) -> None:
         """Move the particle by one time step"""
-        self.x += self.vx * dt
-        self.y += self.vy * dt
+        if self.movement_mode == "straight":
+            # Straight-line movement
+            self.x += self.vx * dt
+            self.y += self.vy * dt
+        elif self.movement_mode == "diffusion":
+            # Random movement (diffusion)
+            sigma = np.sqrt(2 * self.velocity * dt)
+            self.x += np.random.normal(0, sigma)
+            self.y += np.random.normal(0, sigma)
+
         self.age += 1
         
-    def reflect_at_boundary(self, center_x: float, center_y: float, 
-                          radius_x: float, radius_y: float) -> None:
-        """Reflect particle velocity if it hits the ellipse boundary"""
-        # Check if particle is outside ellipse
+    def reflect_at_boundary(self,
+                        center_x: float,
+                        center_y: float,
+                        radius_x: float,
+                        radius_y: float,
+                        bounce: float = 0.5) -> None:
+        """
+        Prevent particle from passing through the ellipse boundary.
+        
+        Parameters:
+        bounce: float in [0,1]
+            0.0 → remove only the outward component (slip boundary)
+            1.0 → perfect elastic bounce
+            intermediate → partial bounce
+        """
+        # compute offset from ellipse center
         dx = self.x - center_x
         dy = self.y - center_y
-        
-        # Normalized ellipse equation: (dx/rx)^2 + (dy/ry)^2 = 1
-        ellipse_value = (dx / radius_x) ** 2 + (dy / radius_y) ** 2
-        
-        if ellipse_value >= 1.0:
-            # Calculate normal vector at boundary point
-            # Normal components for ellipse: (2*dx/rx^2, 2*dy/ry^2)
-            normal_x = 2 * dx / (radius_x ** 2)
-            normal_y = 2 * dy / (radius_y ** 2)
-            
-            # Normalize the normal vector
-            normal_length = np.sqrt(normal_x ** 2 + normal_y ** 2)
-            if normal_length > 0:
-                normal_x /= normal_length
-                normal_y /= normal_length
-                
-                # Reflect velocity: v' = v - 2(v·n)n
-                dot_product = self.vx * normal_x + self.vy * normal_y
-                self.vx -= 2 * dot_product * normal_x
-                self.vy -= 2 * dot_product * normal_y
-                
-                # Update angle
-                self.angle = np.arctan2(self.vy, self.vx)
-                
-                # Move particle back inside boundary
-                # Find point on ellipse boundary along the line from center to particle
-                scale = 0.99  # Slightly inside to avoid immediate re-collision
-                self.x = center_x + dx * scale / np.sqrt(ellipse_value)
-                self.y = center_y + dy * scale / np.sqrt(ellipse_value)
+        dist_normalized = (dx / radius_x) ** 2 + (dy / radius_y) ** 2
+
+        if dist_normalized >= 1.0:
+            # 1) clamp position just inside the boundary
+            scale = np.sqrt(1.0 / dist_normalized) * 0.99
+            self.x = center_x + dx * scale
+            self.y = center_y + dy * scale
+
+            # 2) compute outward normal at boundary
+            nx = 2 * dx / (radius_x ** 2)
+            ny = 2 * dy / (radius_y ** 2)
+            norm = np.hypot(nx, ny)
+            if norm > 0:
+                nx /= norm
+                ny /= norm
+
+                # 3) project velocity onto normal
+                dot = self.vx * nx + self.vy * ny
+                if dot > 0:
+                    # v_normal = dot * n
+                    # remove v_normal and then add back (-bounce * v_normal):
+                    # v_new = v - (1 + bounce)*v_normal
+                    corr = (1.0 + bounce) * dot
+                    self.vx -= corr * nx
+                    self.vy -= corr * ny
     
     def get_position(self) -> Tuple[float, float]:
         """Get current position as tuple"""
